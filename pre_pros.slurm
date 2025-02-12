@@ -5,7 +5,7 @@
 #SBATCH --error=error_%j.log        # Error file
 #SBATCH --time=4-00:00:00                   # Max runtime (HH:MM:SS)
 #SBATCH --partition=PGR-Standard                # Partition (use appropriate partition)
-#SBATCH --ntasks-per-node=1                      # Number of tasks (adjust as needed)
+#SBATCH --ntasks-per-node=8                      # Number of tasks (adjust as needed)
 #SBATCH --gres=gpu:8
 #SBATCH --cpus-per-task=2
 
@@ -22,6 +22,6 @@ echo "GPUs per Task: $SLURM_GPUS_ON_NODE"
 #srun python meshgpt-pytorch/train_autoencoder.py
 source ~/mlp/bin/activate
 # srun accelerate launch --multi-gpu train_auto.py
-srun python data/tag.py ./babylm_data/train_100M/open_subtitles.train
+srun accelerate launch --multi-gpu data/tag.py ./babylm_data/train_100M/open_subtitles.train
 # srun accelerate launch --multi-gpu continue_auto.py
 
