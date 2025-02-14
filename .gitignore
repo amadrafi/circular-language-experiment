@@ -9,6 +9,8 @@ kallini-job-*.out
 # Models
 models/
 
+checkpoints/
+
 # VSCode
 .vscode/
 

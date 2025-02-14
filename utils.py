@@ -32,7 +32,7 @@ GENRES = {
 }
 CHECKPOINT_WRITE_PATH = "/nlp/scr3/nlp/llms-in-llms/babylm_models"
 CHECKPOINT_READ_PATH = "/nlp/scr3/nlp/llms-in-llms/babylm_models"
-BABYLM_DATA_PATH = "./babylm_data/train100m"
+BABYLM_DATA_PATH = "./babylm_data"
 MARKER_HOP_SING = "🅂"
 MARKER_HOP_PLUR = "🄿"
 MARKER_REV = "🅁"

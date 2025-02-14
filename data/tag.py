@@ -55,7 +55,51 @@ def __get_constituency_parse(sent, nlp):
     constituency_parse = "(ROOT " + " ".join(parse_trees) + ")"
     return constituency_parse
 
+def create_batches(lines, max_tokens=500):
+    """
+    Create batches of lines such that each batch is estimated to have fewer than max_tokens tokens.
+    If a single line is longer than max_tokens, split it into smaller chunks.
+    """
+    batches = []
+    current_batch = []
+    current_token_count = 0
 
+    for line in lines:
+        # Estimate token count using whitespace
+        token_count_line = len(line.split())
+        
+        # If the line itself exceeds max_tokens, split it further.
+        if token_count_line > max_tokens:
+            # Flush current batch if any
+            if current_batch:
+                batches.append("\n".join(current_batch))
+                current_batch = []
+                current_token_count = 0
+            
+            # Split the long line into smaller chunks
+            words = line.split()
+            for i in range(0, len(words), max_tokens):
+                chunk = " ".join(words[i:i + max_tokens])
+                batches.append(chunk)
+            continue
+
+        # If adding this line would exceed max_tokens, flush the current batch.
+        if current_token_count + token_count_line > max_tokens:
+            batches.append("\n".join(current_batch))
+            current_batch = [line]
+            current_token_count = token_count_line
+        else:
+            current_batch.append(line)
+            current_token_count += token_count_line
+
+    # Append any remaining lines as a final batch.
+    if current_batch:
+        batches.append("\n".join(current_batch))
+    return batches
+
+#############
+#   MAIN    #
+#############
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -93,10 +137,10 @@ if __name__ == "__main__":
 
         # Strip lines and join text
         print("Concatenating lines...")
-        lines = [l.strip() for l in lines]
-        line_batches = [lines[i:i + BATCH_SIZE]
-                        for i in range(0, len(lines), BATCH_SIZE)]
-        text_batches = [" ".join(l) for l in line_batches]
+        lines = [l.strip() for l in lines if l.strip() != ""]
+        #line_batches = [lines[i:i + BATCH_SIZE] for i in range(0, len(lines), BATCH_SIZE)]
+        #text_batches = ["\n".join(l) for l in line_batches]
+        text_batches = create_batches(lines, max_tokens=150)
 
         # Iterate over lines in file and track annotations
         line_annotations = []
