@@ -1,90 +1,122 @@
-# 💥 Mission: Impossible Language Models 💥
+## Circular Language Experiment: Setup and Data Perturbation
 
-This is the code repository for the paper "[Mission: Impossible Language Models](https://arxiv.org/abs/2401.06416)".
+This README focuses on preparing the BabyLM data, tagging it, and generating perturbed datasets using `utils.py` and `perturb.py`. Training and analysis scripts are present in the repo but are out of scope here.
 
-If you use our code, please cite our paper:
+### Requirements
 
-```
-@misc{kallini2024mission,
-      title={Mission: Impossible Language Models}, 
-      author={Julie Kallini and Isabel Papadimitriou and Richard Futrell and Kyle Mahowald and Christopher Potts},
-      year={2024},
-      eprint={2401.06416},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-```
+- Python 3.10+ recommended
+- PyTorch and Transformers (installed via `requirements.txt`)
+- Stanza (for tagging; models are downloaded at first use)
 
-This repository contains the code necessary to fully replicate our paper, including the scripts to create impossible language datasets, train GPT-2 models, and run all experiments. We also include the notebooks to generate the result graphs in our paper.
-
-Let's get started!
-
-## Setup
-
-First, clone the repo and install dependencies:
+Install dependencies:
 
 ```
-git clone https://github.com/jkallini/mission-impossible-language-models.git
-cd mission-impossible-language-models
 pip install -r requirements.txt
 ```
 
-## Impossible Language Dataset Creation
+### Configure paths (optional)
 
-The scripts for creating impossible language datasets are located in the `data/` directory.
-First, you must download a copy of the [BabyLM dataset](https://babylm.github.io/), which we use for our experiments. 
-Then, make sure to set `BABYLM_DATA_PATH` in the `utils.py` file to the path on your system where your BabyLM dataset is located.
+Open `utils.py` and review constants:
 
-After downloading the BabyLM dataset, you will need to tag it with morphological features and part-of-speech tags. You can use our `tag.py` script.
+- `BABYLM_DATA_PATH` (default `./babylm_data`): base directory where raw and perturbed data live.
+- `CHECKPOINT_WRITE_PATH`, `CHECKPOINT_READ_PATH`: only needed for training; can be ignored if you only generate data.
 
-With the tagged data, you can easily recreate one of the impossible language datasets described in our paper. These are predefined and listed in the `PERTURBATIONS` section at the end of `utils.py`. Here is an
-example for the PartialReverse language from the paper:
+### Prepare BabyLM data
 
-```
-python3 perturb.py reverse_partial 100M
-```
+1) Download the BabyLM corpus (e.g., 100M split) from the BabyLM site and place split files under these directories (create them if needed):
 
-This will create a perturbed version of the 100M BabyLM train set. You may use `perturb.py` or `perturb.sh` to perturb multiple splits at the same time.
+- `babylm_data/train_100M/`  (e.g., `aochildes.train`, `bnc_spoken.train`, ...)
+- `babylm_data/train_dev/`   (e.g., `aochildes.dev`, ...)
+- `babylm_data/train_test/`  (e.g., `aochildes.test`, ...)
 
-### Defining New Impossible Languages
-
-You can also define your own impossible languages! They are described by four attributes:
-
-1. `perturbation_function`: function mapping tagged sentences to sequences of GPT-2 tokens.
-2. `affect_function`: function that determines whether an input sentences is "affected" or altered by the perturbation.
-3. `filter_function`: function that determines whether an input sentence should be included in the final dataset.
-4. `gpt2_tokenizer`: tokenizer used to perturb this dataset.
-
-You can add these definitions to `utils.py`, where the existing perturbations are located.
-
-
-## Model Training
-
-To train GPT-2 models, we use [`mistral`](https://github.com/stanford-crfm/mistral). If you would like to train GPT-2s with `mistral` as well, please follow their steps for installation. You may download their repo anywhere on your system.
-
-Next, make sure to change the following constants in `utils.py`:
-- `CHECKPOINT_WRITE_PATH`: the path where your training checkpoints will be written.
-- `CHECKPOINT_READ_PATH`: the path where you will read training checkpoints when running experiments.
-
-Our training scripts are in the `training/` directory.
-Once you have `mistral` installed, set `MISTRAL_PATH` to the path of your library in `prepare_training.sh`. Then, you can use this script to generate the config files that you will use to launch `mistral` training runs.
-
-Our scripts will create the config files and move them to the location of your `mistral` directory—you will only need to launch the training run. Here's an example command to launch training for the PartialReverse language using the 100M training set with the random seed set to 41:
+2) Download Stanza English models (run once):
 
 ```
-CUDA_VISIBLE_DEVICES=0 python3 train.py --config conf/train_reverse_partial_100M_randinit_seed41.yaml --nnodes 1 --nproc_per_node 1 --training_arguments.fp16 true --training_arguments.warmup_steps 300 --training_arguments.max_steps 3000
+python -c "import stanza; stanza.download('en')"
 ```
 
-## Experiments
+3) Tag the data with POS/lemma (and optionally constituency parses). For Hop perturbations (`hop_*`), constituency parses are required.
 
-The main paper includes three experiments: perplexities, surprisals, and causal interventions. The appendix also includes a constituency probing experiment.
+Examples:
 
-The scripts to run each of these experiments is separated into their own subdirectories:
+```
+# 100M train (with constituency parses required for hop perturbations)
+python data/tag.py babylm_data/train_100M/*.train -p
 
-1. `perplexities/`: code to run perplexity experiments. You may use `perplexities.py` or `perplexities.sh` to run experiments for multiple languages at the same time.
-2. `hop_surprisal/`: code to run surprisal experiments for the *Hop languages, in `hop_surprisal.py`.
-3. `hop_interventions/`: code to run interchange intervention experiments for the *Hop languages. First generate the agreement data using `create_agreement_data.py`, then run the intervention experiments using `hop_interventions.py`.
-You will need to separately clone and install [`align-transformers`](https://github.com/frankaging/align-transformers) (recently renamed to `pyvene`) and set `PATH_TO_ALIGN_TRANSFORMERS` to the path where the library is located on your system.
-4. `edge_probing/`: code to run constituency probing experiments. Use `get_constituency_parses.py` and `load_phrase_data.py` to prepare the test data, and use `edge_probing.py` to run the experiments.
+# dev split
+python data/tag.py babylm_data/train_dev/*.dev -p
 
-Each directory contains python notebooks to generate the result graphs shown in the paper.
+# test split
+python data/tag.py babylm_data/train_test/*.test -p
+```
+
+This creates JSON files next to the originals (e.g., `aochildes.json` or `aochildes_parsed.json`).
+
+### Generate perturbed datasets
+
+Perturbations are defined in `utils.py` under `PERTURBATIONS`. Available names:
+
+- shuffle_control, shuffle_nondeterministic, shuffle_deterministic21, shuffle_deterministic57, shuffle_deterministic84
+- shuffle_local3, shuffle_local5, shuffle_local10, shuffle_even_odd
+- reverse_control, reverse_partial, reverse_full
+- hop_control, hop_tokens4, hop_words4
+
+Usage:
+
+```
+python perturb.py <perturbation_name> <split>
+```
+
+Where `<split>` is one of: `100M`, `10M`, `dev`, `test`, `unittest`.
+
+Examples:
+
+```
+# Partial reversal language on 100M train
+python perturb.py reverse_partial 100M
+
+# 4-word hop language on dev (requires tagged data with -p)
+python perturb.py hop_words4 dev
+
+# Deterministic shuffle on test
+python perturb.py shuffle_deterministic21 test
+```
+
+Outputs are written under `BABYLM_DATA_PATH/babylm_data_perturbed/` in subfolders:
+
+- `babylm_<perturbation>/babylm_100M/` and `babylm_dev/` for train/dev
+- `babylm_<perturbation>/babylm_test_affected/` and `babylm_test_unaffected/` for test
+- `babylm_<perturbation>/babylm_test_unaffected_sents/` contains raw strings of unaffected test sentences
+
+Notes:
+
+- Hop perturbations use special marker tokens defined in `utils.py` (`MARKER_HOP_SING`, `MARKER_HOP_PLUR`) and require constituency parses to correctly identify affected sentences.
+- Reversal perturbations insert the reverse marker (`MARKER_REV`) and rely on the GPT‑2 tokenizer augmented in `utils.py`.
+
+### Quick verification (optional)
+
+There are lightweight checks inside `perturb.py` (using `pytest`) comparing expected equivalences, e.g., hop tokens vs hop words, and partial reversal vs identity segments. Run selective tests after generating data:
+
+```
+pytest -k "3pres or reversal" -q
+```
+
+### Tips
+
+- If Stanza attempts GPU use on a machine without CUDA and errors, set CPU mode by editing `data/tag.py` to use `use_gpu=False` for the pipelines.
+- The shell helper `data/perturb.sh` exists but direct `python perturb.py ...` usage from the repo root is recommended.
+
+### Citation
+
+If you use this code or data recipes, please cite:
+
+```
+@misc{kallini2024mission,
+  title={Mission: Impossible Language Models},
+  author={Julie Kallini and Isabel Papadimitriou and Richard Futrell and Kyle Mahowald and Christopher Potts},
+  year={2024},
+  eprint={2401.06416},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL}
+}
+```
