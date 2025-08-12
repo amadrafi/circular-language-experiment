@@ -2,6 +2,9 @@
 
 This README focuses on preparing the BabyLM data, tagging it, and generating perturbed datasets using `utils.py` and `perturb.py`. Training and analysis scripts are present in the repo but are out of scope here.
 
+This is a continuation of the work done in [Mission: Impossible Language Models](https://arxiv.org/abs/2401.06416).
+This repo refers to the university project presented in [Circular Language](https://openreview.net/forum?id=PftI5myqzc)
+
 ### Requirements
 
 - Python 3.10+ recommended
